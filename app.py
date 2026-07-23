@@ -257,9 +257,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Добро пожаловать в бота Омниверса! 🌟
 
 Я помогу тебе:
-• 📝 Оформить анкету для игры
-• 🎭 Управлять ролями
-• 📊 Отслеживать свою активность
+• 📝 Оформить анкету
+• 🎭 Управлять ролями
 
 Чтобы начать, используй команды:
 /anketa - создать или просмотреть анкету
@@ -417,6 +416,10 @@ async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "❌ Неизвестная команда. Используйте /help для списка доступных команд."
     )
 
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    await update.message.reply_text("Операция отменена.")
+
 def main():
     """Основная функция запуска бота"""
     # Создаем таблицы в базе данных
@@ -426,6 +429,7 @@ def main():
     application = Application.builder().token(TOKEN).build()
     
     # Добавляем обработчики команд
+application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
@@ -442,6 +446,7 @@ def main():
     # Запускаем бота
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
+
 from flask import Flask
 import threading
 
@@ -456,6 +461,7 @@ def run_flask():
 
 # Запускаем Flask в фоновом потоке
 threading.Thread(target=run_flask, daemon=True).start()
+
 
 if __name__ == "__main__":
     main()
