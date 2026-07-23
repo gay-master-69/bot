@@ -415,6 +415,11 @@ async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "❌ Неизвестная команда. Используйте /help для списка доступных команд."
     )
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data.clear()
+    await update.message.reply_text("Операция отменена.")
+
 def main():
     """Основная функция запуска бота"""
     # Создаем таблицы в базе данных
@@ -422,15 +427,15 @@ def main():
     
     # Создаем приложение
     application = Application.builder().token(TOKEN).build()
-    #Добавляем обработчики команд
-
+    # Добавляем обработчики команд
 application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("profile", profile))
-    application.add_handler(CommandHandler("anketa", anketa))
-    application.add_handler(CommandHandler("anketa_review", anketa_review))
-    application.add_handler(CommandHandler("warn", warn))
-    application.add_handler(CommandHandler("deletemessages", deletemessages))
+application.add_handler(CommandHandler("help", help_command))
+application.add_handler(CommandHandler("profile", profile))
+application.add_handler(CommandHandler("anketa", anketa))
+application.add_handler(CommandHandler("anketa_review", anketa_review))
+application.add_handler(CommandHandler("warn", warn))
+application.add_handler(CommandHandler("deletemessages", deletemessages))
+application.add_handler(CommandHandler("cancel", cancel))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
