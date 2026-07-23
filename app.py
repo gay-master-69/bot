@@ -277,22 +277,22 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = """
 📚 *Список команд бота*
 
-*Основные команды:*
+Основные команды:
 /start - Запуск бота
 /help - Показать это сообщение
 /profile - Просмотр профиля
 /anketa - Создать или просмотреть анкету
 
-*Команды для администраторов:*
+Команды для администраторов:
 /warn - Выдать предупреждение пользователю
 /deletemessages - Удалить сообщения пользователя
 
-*Команды для анкетников:*
+Команды для анкетников:
 /anketa_review - Просмотр анкет на модерацию
 
 Для получения дополнительной информации обратитесь к администрации.
 """
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+    await update.message.reply_text(help_text)
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать профиль пользователя"""
