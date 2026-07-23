@@ -422,13 +422,10 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Основная функция запуска бота"""
-    # Создаем таблицы в базе данных
     create_tables()
     
-    # Создаем приложение
     application = Application.builder().token(TOKEN).build()
     
-    # Добавляем обработчики команд
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
@@ -437,17 +434,13 @@ def main():
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
-    
-    # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
-    # TODO: Добавить остальные обработчики команд и ConversationHandler
-    
-    # Запускаем бота
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
 
-# Flask для Render (этот блок ДОЛЖЕН быть вне main())
+
+# Flask для Render
 from flask import Flask
 import threading
 
