@@ -429,7 +429,6 @@ def main():
     application = Application.builder().token(TOKEN).build()
     
     # Добавляем обработчики команд
-application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
@@ -437,6 +436,8 @@ application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
+
+application.add_handler(CommandHandler("cancel", cancel))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
