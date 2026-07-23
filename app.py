@@ -428,8 +428,9 @@ def main():
     # Создаем приложение
     application = Application.builder().token(TOKEN).build()
     
-    # Добавляем обработчики команд
-    application.add_handler(CommandHandler("start", start))
+    # Добавляем обработчики команд 
+
+application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
