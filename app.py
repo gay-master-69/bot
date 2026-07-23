@@ -427,15 +427,16 @@ def main():
     
     # Создаем приложение
     application = Application.builder().token(TOKEN).build()
+    
     # Добавляем обработчики команд
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("help", help_command))
-application.add_handler(CommandHandler("profile", profile))
-application.add_handler(CommandHandler("anketa", anketa))
-application.add_handler(CommandHandler("anketa_review", anketa_review))
-application.add_handler(CommandHandler("warn", warn))
-application.add_handler(CommandHandler("deletemessages", deletemessages))
-application.add_handler(CommandHandler("cancel", cancel))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("profile", profile))
+    application.add_handler(CommandHandler("anketa", anketa))
+    application.add_handler(CommandHandler("anketa_review", anketa_review))
+    application.add_handler(CommandHandler("warn", warn))
+    application.add_handler(CommandHandler("deletemessages", deletemessages))
+    application.add_handler(CommandHandler("cancel", cancel))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
@@ -445,6 +446,8 @@ application.add_handler(CommandHandler("cancel", cancel))
     # Запускаем бота
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
+
+# Flask для Render (этот блок ДОЛЖЕН быть вне main())
 from flask import Flask
 import threading
 
@@ -457,10 +460,7 @@ def health():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=10000)
 
-# Запускаем Flask в фоновом потоке
 threading.Thread(target=run_flask, daemon=True).start()
-
 
 if __name__ == "__main__":
     main()
-
