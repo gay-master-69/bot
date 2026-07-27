@@ -254,18 +254,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         welcome_text = f"""
 👋 Привет, {user.first_name}!
 
-Добро пожаловать в бота Омниверса! 🌟
-
-Я помогу тебе:
-• 📝 Оформить анкету
-• 🎭 Управлять ролями
+Добро пожаловать в Омниверс.
 
 Чтобы начать, используй команды:
-/anketa - создать или просмотреть анкету
+/anketa - создать анкету
 /profile - просмотреть свой профиль
 /help - список всех команд
 
-Удачи в Омниверсе! 🎮
+Приятного времяпровождения. 
 """
         await update.message.reply_text(welcome_text)
     finally:
@@ -279,8 +275,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Основные команды:
 /start - Запуск бота
 /help - Показать это сообщение
+/rules - Правила
 /profile - Просмотр профиля
-/anketa - Создать или просмотреть анкету
+/anketa - Создать анкету
 
 Команды для администраторов:
 /warn - Выдать предупреждение пользователю
@@ -410,6 +407,15 @@ async def deletemessages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🗑️ Удалено {count} последних сообщений пользователя {target_username}."
     )
 
+async def rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /rules"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    rules_text = """ https://telegra.ph/Konstituciya-Omniversa-05-15 """
+    await update.message.reply_text(rules_text, parse_mode='Markdown')
+
 async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик неизвестных команд"""
     await update.message.reply_text(
@@ -434,6 +440,8 @@ def main():
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
+
+application.add_handler(CommandHandler("rules", rules))
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
     logger.info("Бот Омниверс запущен!")
