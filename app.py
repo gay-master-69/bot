@@ -431,7 +431,7 @@ async def lore(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not user:
         return
-    text = """Лор Омниреальности и прочие важные события"""
+    text = """События из истории Омниреальности"""
 
     keyboard = [
     ]
