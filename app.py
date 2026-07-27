@@ -426,6 +426,19 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("Операция отменена.")
 
+async def lore(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда для вызова сообщения с URL-кнопками"""
+    user = update.effective_user
+    if not user:
+        return
+    text = """Лор Омниреальности и прочие важные события"""
+
+    keyboard = [
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
+
 def main():
     """Основная функция запуска бота"""
     create_tables()
@@ -442,6 +455,8 @@ def main():
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
+
+application.add_handler(CommandHandler("lore", lore))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
