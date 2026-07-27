@@ -432,6 +432,7 @@ def main():
     
     application = Application.builder().token(TOKEN).build()
     
+    # Добавляем обработчики команд
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
@@ -440,14 +441,13 @@ def main():
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
-
-application.add_handler(CommandHandler("rules", rules))
+    application.add_handler(CommandHandler("rules", rules))
     
-application.add_handler(MessageHandler(filters.COMMAND, unknown))
+    # Обработчик неизвестных команд
+    application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
-
 
 # Flask для Render
 from flask import Flask
