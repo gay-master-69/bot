@@ -442,7 +442,8 @@ def main():
     application.add_handler(CommandHandler("cancel", cancel))
 
 application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(MessageHandler(filters.COMMAND, unknown))
+    
+application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
