@@ -434,6 +434,7 @@ async def lore(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = """События из истории Омниреальности"""
 
     keyboard = [
+    [InlineKeyboardButton("Война Дума", url="https://telegra.ph/Vojna-Duma-07-27")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
