@@ -466,7 +466,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            text=f"📩 *Новый feedback!*\n\n"
+            text=f"📩 *Новое обращение!*\n\n"
                  f"👤 От: @{user.username or user.first_name}\n"
                  f"🆔 ID: `{user.id}`\n\n"
                  f"📝 Текст:\n{text}",
