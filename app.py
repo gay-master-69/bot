@@ -496,16 +496,17 @@ def main():
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(CommandHandler("lore", lore))
-
-application.add_handler(CommandHandler("feedback", feedback))
+    application.add_handler(CommandHandler("links", links))
+    application.add_handler(CommandHandler("feedback", feedback))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     
     logger.info("Бот Омниверс запущен!")
     application.run_polling()
-
+    
+    # Обработчик неизвестных команд
+    
 # Flask для Render
 from flask import Flask
 import threading
