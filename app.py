@@ -496,7 +496,7 @@ def main():
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(CommandHandler("links", links))
+    application.add_handler(CommandHandler("links", lore))
     application.add_handler(CommandHandler("feedback", feedback))
     
     # Обработчик неизвестных команд
