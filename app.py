@@ -440,6 +440,46 @@ async def lore(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(text, parse_mode='Markdown', reply_markup=reply_markup)
 
+async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /feedback - отправка предложений/жалоб"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    text = ' '.join(context.args)
+    if not text:
+        await update.message.reply_text(
+            "📝 *Как отправить жалобу:*\n\n"
+            "Напиши команду и текст:\n"
+            "`/feedback Текст предложения или жалобы`\n\n"
+            "Пример:\n"
+            "`/feedback Хочу чтобы добавили команду для розыгрышей!`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    session = SessionLocal()
+    try:
+        db_user = get_or_create_user(session, user.id, user.username)
+        
+        ADMIN_CHAT_ID = 3999320548  # ← ТВОЙ ID
+        
+        await context.bot.send_message(
+            chat_id=ADMIN_CHAT_ID,
+            text=f"📩 *Новый feedback!*\n\n"
+                 f"👤 От: @{user.username or user.first_name}\n"
+                 f"🆔 ID: `{user.id}`\n\n"
+                 f"📝 Текст:\n{text}",
+            parse_mode='Markdown'
+        )
+        
+        await update.message.reply_text(
+            "✅ Спасибо за обратную связь!\n\n"
+            "Ваше сообщение отправлено администрации."
+        )
+    finally:
+        session.close()
+
 def main():
     """Основная функция запуска бота"""
     create_tables()
@@ -457,6 +497,8 @@ def main():
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
     application.add_handler(CommandHandler("lore", lore))
+
+application.add_handler(CommandHandler("feedback", feedback))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
