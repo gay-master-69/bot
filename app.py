@@ -462,7 +462,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db_user = get_or_create_user(session, user.id, user.username)
         
-        ADMIN_CHAT_ID = 3999320548  # ← ТВОЙ ID
+        ADMIN_CHAT_ID = 5150559970  # ← ТВОЙ ID
         
         await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
