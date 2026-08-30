@@ -711,7 +711,15 @@ async def add_anketnik(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Основная функция запуска бота"""
+    
+    # ВРЕМЕННО: удаляем старую базу
+    import os
+    if os.path.exists("omniverse_rp.db"):
+        os.remove("omniverse_rp.db")
+        logger.info("🗑️ Старая база удалена")
+    
     create_tables()
+    
     
     application = Application.builder().token(TOKEN).build()
     
