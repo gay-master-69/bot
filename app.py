@@ -27,7 +27,7 @@ from telegram.ext import (
 from telegram.error import TelegramError
 
 TOKEN = os.getenv('TOKEN')
-DEVELOPER_IDS = [6283690984]
+DEVELOPER_IDS = [5150559970]
 
 ANKET_CHANNEL_ID = -1003394079022
 
