@@ -481,7 +481,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
 
 # ========== АНКЕТЫ ==========
-MODERATOR_IDS = [1720557031,5150559970]  # ← ТВОЙ ID
+MODERATOR_IDS = [1720557031, 5150559970]  # ← оба твоих ID
 
 async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Создание новой анкеты"""
@@ -496,7 +496,7 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⛔ Вы забанены.")
             return
         
-        # Проверяем, есть ли уже анкета
+        # Проверяем, есть ли уже анкета на рассмотрении
         existing = session.query(AnketaRequest).filter_by(
             user_id=user.id, 
             status="pending"
@@ -511,7 +511,6 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Запрашиваем текст анкеты
         context.user_data['anketa_step'] = 'waiting_content'
-        context.user_data['anketa_text'] = None
         await update.message.reply_text(
             "📝 *Создание анкеты*\n\n"
             "Напишите текст вашей анкеты.\n"
@@ -527,7 +526,7 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка текста анкеты"""
+    """Обработка текста анкеты — сохраняем в БД сразу"""
     user = update.effective_user
     if not user:
         return
@@ -537,19 +536,42 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     text = update.message.text
     if len(text) < 10:
-        await update.message.reply_text(
-            "⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов."
-        )
+        await update.message.reply_text("⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов.")
         return
     
-    # Сохраняем текст анкеты
-    context.user_data['anketa_text'] = text
-    await update.message.reply_text(
-        "✅ Текст сохранён!\n\n"
-        "Чтобы отправить на модерацию, напишите:\n"
-        "`/send_anketa`",
-        parse_mode='Markdown'
-    )
+    session = SessionLocal()
+    try:
+        # Проверяем, нет ли уже черновика
+        existing_draft = session.query(AnketaRequest).filter_by(
+            user_id=user.id,
+            status="draft"
+        ).first()
+        
+        if existing_draft:
+            # Обновляем существующий черновик
+            existing_draft.anketa_content = text
+            session.commit()
+            draft_id = existing_draft.id
+        else:
+            # Сохраняем новый черновик в БД
+            new_anketa = AnketaRequest(
+                user_id=user.id,
+                anketa_content=text,
+                status="draft"
+            )
+            session.add(new_anketa)
+            session.commit()
+            draft_id = new_anketa.id
+        
+        context.user_data['anketa_draft_id'] = draft_id
+        await update.message.reply_text(
+            "✅ Текст сохранён!\n\n"
+            "Чтобы отправить на модерацию, напишите:\n"
+            "`/send_anketa`",
+            parse_mode='Markdown'
+        )
+    finally:
+        session.close()
 
 
 async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -558,8 +580,8 @@ async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         return
     
-    text = context.user_data.get('anketa_text')
-    if not text:
+    draft_id = context.user_data.get('anketa_draft_id')
+    if not draft_id:
         await update.message.reply_text(
             "⚠️ Сначала напишите текст анкеты:\n"
             "/anketa"
@@ -568,13 +590,19 @@ async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     session = SessionLocal()
     try:
-        # Сохраняем в БД
-        new_anketa = AnketaRequest(
+        # Забираем черновик из БД
+        anketa = session.query(AnketaRequest).filter_by(
+            id=draft_id,
             user_id=user.id,
-            anketa_content=text,
-            status="pending"
-        )
-        session.add(new_anketa)
+            status="draft"
+        ).first()
+        
+        if not anketa:
+            await update.message.reply_text("⚠️ Черновик не найден. Напишите /anketa заново.")
+            return
+        
+        # Обновляем статус
+        anketa.status = "pending"
         session.commit()
         
         # Отправляем модераторам
@@ -584,14 +612,14 @@ async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"📋 *Новая анкета!*\n\n"
                      f"👤 От: @{user.username or user.first_name}\n"
                      f"🆔 ID: `{user.id}`\n\n"
-                     f"📝 Текст анкеты:\n{text}",
+                     f"📝 Текст анкеты:\n{anketa.anketa_content}",
                 parse_mode='Markdown'
             )
         
         await update.message.reply_text(
             "✅ Анкета отправлена на модерацию! Ожидайте ответа."
         )
-        context.user_data.pop('anketa_text', None)
+        context.user_data.pop('anketa_draft_id', None)
         context.user_data.pop('anketa_step', None)
     finally:
         session.close()
@@ -679,33 +707,6 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         
         session.commit()
-    finally:
-        session.close()
-
-async def add_anketnik(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    if user.id not in DEVELOPER_IDS:
-        await update.message.reply_text("⛔ Только для разработчиков.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("⚠️ Использование: /addanketnik ID_пользователя")
-        return
-    
-    session = SessionLocal()
-    try:
-        target_id = int(context.args[0])
-        target = session.query(User).filter_by(id=target_id).first()
-        
-        if not target:
-            await update.message.reply_text("❌ Пользователь не найден в базе. Попросите его написать /start боту.")
-            return
-        
-        target.is_anketnik = True
-        session.commit()
-        await update.message.reply_text(f"✅ Пользователь @{target.username or target.id} назначен анкетником.")
-    except ValueError:
-        await update.message.reply_text("⚠️ Введите ID пользователя (число).")
     finally:
         session.close()
 
