@@ -515,9 +515,6 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📝 *Создание анкеты*\n\n"
             "Напишите текст вашей анкеты.\n"
             "Укажите: имя, возраст, описание роли и другую важную информацию.\n\n"
-            "После того как напишете, отправьте команду:\n"
-            "`/send_anketa` — чтобы отправить на модерацию\n"
-            "`/cancel` — чтобы отменить\n\n"
             "Просто отправьте текст анкеты прямо сейчас:",
             parse_mode='Markdown'
         )
@@ -526,7 +523,7 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка текста анкеты — сохраняем в БД сразу"""
+    """Обработка текста анкеты — отправляем сразу"""
     user = update.effective_user
     if not user:
         return
@@ -541,68 +538,13 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     session = SessionLocal()
     try:
-        # Проверяем, нет ли уже черновика
-        existing_draft = session.query(AnketaRequest).filter_by(
+        # Сохраняем в БД
+        new_anketa = AnketaRequest(
             user_id=user.id,
-            status="draft"
-        ).first()
-        
-        if existing_draft:
-            # Обновляем существующий черновик
-            existing_draft.anketa_content = text
-            session.commit()
-            draft_id = existing_draft.id
-        else:
-            # Сохраняем новый черновик в БД
-            new_anketa = AnketaRequest(
-                user_id=user.id,
-                anketa_content=text,
-                status="draft"
-            )
-            session.add(new_anketa)
-            session.commit()
-            draft_id = new_anketa.id
-        
-        context.user_data['anketa_draft_id'] = draft_id
-        await update.message.reply_text(
-            "✅ Текст сохранён!\n\n"
-            "Чтобы отправить на модерацию, напишите:\n"
-            "`/send_anketa`",
-            parse_mode='Markdown'
+            anketa_content=text,
+            status="pending"
         )
-    finally:
-        session.close()
-
-
-async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправка анкеты на модерацию"""
-    user = update.effective_user
-    if not user:
-        return
-    
-    draft_id = context.user_data.get('anketa_draft_id')
-    if not draft_id:
-        await update.message.reply_text(
-            "⚠️ Сначала напишите текст анкеты:\n"
-            "/anketa"
-        )
-        return
-    
-    session = SessionLocal()
-    try:
-        # Забираем черновик из БД
-        anketa = session.query(AnketaRequest).filter_by(
-            id=draft_id,
-            user_id=user.id,
-            status="draft"
-        ).first()
-        
-        if not anketa:
-            await update.message.reply_text("⚠️ Черновик не найден. Напишите /anketa заново.")
-            return
-        
-        # Обновляем статус
-        anketa.status = "pending"
+        session.add(new_anketa)
         session.commit()
         
         # Отправляем модераторам
@@ -612,14 +554,13 @@ async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"📋 *Новая анкета!*\n\n"
                      f"👤 От: @{user.username or user.first_name}\n"
                      f"🆔 ID: `{user.id}`\n\n"
-                     f"📝 Текст анкеты:\n{anketa.anketa_content}",
+                     f"📝 Текст анкеты:\n{text}",
                 parse_mode='Markdown'
             )
         
         await update.message.reply_text(
             "✅ Анкета отправлена на модерацию! Ожидайте ответа."
         )
-        context.user_data.pop('anketa_draft_id', None)
         context.user_data.pop('anketa_step', None)
     finally:
         session.close()
@@ -764,13 +705,6 @@ def is_anketnik(user_id: int) -> bool:
 
 def main():
     """Основная функция запуска бота"""
-    
-    # ВРЕМЕННО: удаляем старую базу
-    import os
-    if os.path.exists("omniverse_rp.db"):
-        os.remove("omniverse_rp.db")
-        logger.info("🗑️ Старая база удалена")
-    
     create_tables()
     
     
@@ -781,7 +715,6 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
-    application.add_handler(CommandHandler("send_anketa", send_anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
