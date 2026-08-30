@@ -664,20 +664,14 @@ def main():
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anketa_handle_text))
+    application.add_handler(CallbackQueryHandler(anketa_callback, pattern="^anketa_"))
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
     application.add_handler(CommandHandler("links", lore))
     application.add_handler(CommandHandler("feedback", feedback))
-
-application.add_handler(CommandHandler("anketa", anketa))
-
-application.add_handler(CommandHandler("anketa_review", anketa_review))
-
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anketa_handle_text))
-
-application.add_handler(CallbackQueryHandler(anketa_callback, pattern="^anketa_"))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
