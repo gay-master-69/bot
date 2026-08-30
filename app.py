@@ -480,6 +480,179 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         session.close()
 
+# ========== АНКЕТЫ ==========
+MODERATOR_ID = 3999320548  # ← ТВОЙ ID
+
+async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Создание новой анкеты"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    session = SessionLocal()
+    try:
+        db_user = get_or_create_user(session, user.id, user.username)
+        if db_user.is_banned:
+            await update.message.reply_text("⛔ Вы забанены.")
+            return
+        
+        # Проверяем, есть ли уже анкета
+        existing = session.query(AnketaRequest).filter_by(
+            user_id=user.id, 
+            status="pending"
+        ).first()
+        
+        if existing:
+            await update.message.reply_text(
+                "⏳ У вас уже есть анкета на рассмотрении.\n"
+                "Дождитесь ответа администрации."
+            )
+            return
+        
+        # Запрашиваем текст анкеты
+        context.user_data['anketa_step'] = 'waiting_content'
+        await update.message.reply_text(
+            "📝 *Создание анкеты*\n\n"
+            "Напишите текст вашей анкеты.\n"
+            "Укажите: имя, возраст, описание роли и другую важную информацию.\n\n"
+            "Чтобы отменить, отправьте /cancel",
+            parse_mode='Markdown'
+        )
+    finally:
+        session.close()
+
+
+async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка текста анкеты"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    if context.user_data.get('anketa_step') != 'waiting_content':
+        return
+    
+    text = update.message.text
+    if len(text) < 10:
+        await update.message.reply_text(
+            "⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов."
+        )
+        return
+    
+    session = SessionLocal()
+    try:
+        new_anketa = AnketaRequest(
+            user_id=user.id,
+            anketa_content=text,
+            status="pending"
+        )
+        session.add(new_anketa)
+        session.commit()
+        
+        # Отправляем ТЕБЕ в личку
+        await context.bot.send_message(
+            chat_id=MODERATOR_ID,
+            text=f"📋 *Новая анкета!*\n\n"
+                 f"👤 От: @{user.username or user.first_name}\n"
+                 f"🆔 ID: `{user.id}`\n\n"
+                 f"📝 Текст анкеты:\n{text}",
+            parse_mode='Markdown'
+        )
+        
+        await update.message.reply_text(
+            "✅ Анкета отправлена на модерацию! Ожидайте ответа."
+        )
+        context.user_data.pop('anketa_step', None)
+    finally:
+        session.close()
+
+
+async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Просмотр анкет на модерации (для анкетников)"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    if not is_anketnik(user.id):
+        await update.message.reply_text("⛔ У вас нет прав для просмотра анкет.")
+        return
+    
+    session = SessionLocal()
+    try:
+        pending = session.query(AnketaRequest).filter_by(status="pending").all()
+        
+        if not pending:
+            await update.message.reply_text("📭 Нет анкет на модерации.")
+            return
+        
+        for anketa in pending:
+            user_info = session.query(User).filter_by(id=anketa.user_id).first()
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Одобрить", callback_data=f"anketa_approve_{anketa.id}"),
+                    InlineKeyboardButton("❌ Отклонить", callback_data=f"anketa_reject_{anketa.id}"),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"📋 *Анкета #{anketa.id}*\n\n"
+                f"👤 Пользователь: @{user_info.username or user_info.id}\n"
+                f"🆔 ID: `{anketa.user_id}`\n\n"
+                f"📝 Текст:\n{anketa.anketa_content}",
+                parse_mode='Markdown',
+                reply_markup=reply_markup
+            )
+    finally:
+        session.close()
+
+
+async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка кнопок одобрения/отклонения анкет"""
+    query = update.callback_query
+    await query.answer()
+    
+    user = query.from_user
+    if not is_anketnik(user.id):
+        await query.edit_message_text("⛔ У вас нет прав для модерации анкет.")
+        return
+    
+    data = query.data
+    parts = data.split('_')
+    action = parts[1]
+    anketa_id = int(parts[2])
+    
+    session = SessionLocal()
+    try:
+        anketa = session.query(AnketaRequest).filter_by(id=anketa_id).first()
+        if not anketa:
+            await query.edit_message_text("❌ Анкета не найдена.")
+            return
+        
+        if action == "approve":
+            anketa.status = "approved"
+            await query.edit_message_text(f"✅ Анкета #{anketa_id} одобрена.")
+            
+            # Уведомляем пользователя
+            await context.bot.send_message(
+                chat_id=anketa.user_id,
+                text=f"✅ Ваша анкета была одобрена!\n\n"
+                     f"Теперь вы можете участвовать в игре. Удачи!"
+            )
+        else:
+            anketa.status = "rejected"
+            await query.edit_message_text(f"❌ Анкета #{anketa_id} отклонена.")
+            
+            # Уведомляем пользователя
+            await context.bot.send_message(
+                chat_id=anketa.user_id,
+                text=f"❌ Ваша анкета была отклонена.\n\n"
+                     f"Причина: не указана. Обратитесь к администрации."
+            )
+        
+        session.commit()
+    finally:
+        session.close()
+
 def main():
     """Основная функция запуска бота"""
     create_tables()
@@ -498,6 +671,14 @@ def main():
     application.add_handler(CommandHandler("rules", rules))
     application.add_handler(CommandHandler("links", lore))
     application.add_handler(CommandHandler("feedback", feedback))
+
+application.add_handler(CommandHandler("anketa", anketa))
+
+application.add_handler(CommandHandler("anketa_review", anketa_review))
+
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anketa_handle_text))
+
+application.add_handler(CallbackQueryHandler(anketa_callback, pattern="^anketa_"))
     
     # Обработчик неизвестных команд
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
