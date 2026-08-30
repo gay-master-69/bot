@@ -481,7 +481,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
 
 # ========== АНКЕТЫ ==========
-MODERATOR_ID = 1720557031  # ← ТВОЙ ID
+MODERATOR_IDS = [1720557031,5150559970]  # ← ТВОЙ ID
 
 async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Создание новой анкеты"""
@@ -549,9 +549,10 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         session.commit()
         
         # Отправляем ТЕБЕ в личку
-        await context.bot.send_message(
-            chat_id=MODERATOR_ID,
-            text=f"📋 *Новая анкета!*\n\n"
+        for mod_id in MODERATOR_IDS:
+    await context.bot.send_message(
+        chat_id=mod_id,
+        text=f"📋 *Новая анкета!*\n\n"
                  f"👤 От: @{user.username or user.first_name}\n"
                  f"🆔 ID: `{user.id}`\n\n"
                  f"📝 Текст анкеты:\n{text}",
