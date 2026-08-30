@@ -720,16 +720,15 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
+    application.add_handler(CommandHandler("send_anketa", send_anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
     application.add_handler(CommandHandler("warn", warn))
     application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(CommandHandler("links", lore))
+    application.add_handler(CommandHandler("lore", links))
     application.add_handler(CommandHandler("feedback", feedback))
-   
-application.add_handler(CommandHandler("send_anketa", send_anketa))
-    application.add_handler(CommandHandler("addanketnik", add_anketnik))  # ← добавлена строка
+    application.add_handler(CommandHandler("addanketnik", add_anketnik))
     
     # Обработчик текста для анкет
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anketa_handle_text))
