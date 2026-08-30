@@ -511,11 +511,15 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Запрашиваем текст анкеты
         context.user_data['anketa_step'] = 'waiting_content'
+        context.user_data['anketa_text'] = None
         await update.message.reply_text(
             "📝 *Создание анкеты*\n\n"
             "Напишите текст вашей анкеты.\n"
             "Укажите: имя, возраст, описание роли и другую важную информацию.\n\n"
-            "Чтобы отменить, отправьте /cancel",
+            "После того как напишете, отправьте команду:\n"
+            "`/send_anketa` — чтобы отправить на модерацию\n"
+            "`/cancel` — чтобы отменить\n\n"
+            "Просто отправьте текст анкеты прямо сейчас:",
             parse_mode='Markdown'
         )
     finally:
@@ -532,14 +536,39 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     
     text = update.message.text
-    if len(text) < 5:
+    if len(text) < 10:
         await update.message.reply_text(
-            "⚠️ Анкета слишком короткая. Напишите хотя бы 5 символов."
+            "⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов."
+        )
+        return
+    
+    # Сохраняем текст анкеты
+    context.user_data['anketa_text'] = text
+    await update.message.reply_text(
+        "✅ Текст сохранён!\n\n"
+        "Чтобы отправить на модерацию, напишите:\n"
+        "`/send_anketa`",
+        parse_mode='Markdown'
+    )
+
+
+async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправка анкеты на модерацию"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    text = context.user_data.get('anketa_text')
+    if not text:
+        await update.message.reply_text(
+            "⚠️ Сначала напишите текст анкеты:\n"
+            "/anketa"
         )
         return
     
     session = SessionLocal()
     try:
+        # Сохраняем в БД
         new_anketa = AnketaRequest(
             user_id=user.id,
             anketa_content=text,
@@ -548,20 +577,21 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         session.add(new_anketa)
         session.commit()
         
-        # Отправляем ТЕБЕ в личку
+        # Отправляем модераторам
         for mod_id in MODERATOR_IDS:
             await context.bot.send_message(
-        chat_id=mod_id,
-        text=f"📋 *Новая анкета!*\n\n"
-                 f"👤 От: @{user.username or user.first_name}\n"
-                 f"🆔 ID: `{user.id}`\n\n"
-                 f"📝 Текст анкеты:\n{text}",
-            parse_mode='Markdown'
-        )
+                chat_id=mod_id,
+                text=f"📋 *Новая анкета!*\n\n"
+                     f"👤 От: @{user.username or user.first_name}\n"
+                     f"🆔 ID: `{user.id}`\n\n"
+                     f"📝 Текст анкеты:\n{text}",
+                parse_mode='Markdown'
+            )
         
         await update.message.reply_text(
             "✅ Анкета отправлена на модерацию! Ожидайте ответа."
         )
+        context.user_data.pop('anketa_text', None)
         context.user_data.pop('anketa_step', None)
     finally:
         session.close()
@@ -633,16 +663,15 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             anketa.status = "approved"
             await query.edit_message_text(f"✅ Анкета #{anketa_id} одобрена.")
             
-            # Уведомляем пользователя
             await context.bot.send_message(
                 chat_id=anketa.user_id,
                 text=f"✅ Ваша анкета была одобрена!\n\n"
+                     f"Теперь вы можете участвовать в игре. Удачи!"
             )
         else:
             anketa.status = "rejected"
             await query.edit_message_text(f"❌ Анкета #{anketa_id} отклонена.")
             
-            # Уведомляем пользователя
             await context.bot.send_message(
                 chat_id=anketa.user_id,
                 text=f"❌ Ваша анкета была отклонена.\n\n"
@@ -698,6 +727,8 @@ def main():
     application.add_handler(CommandHandler("rules", rules))
     application.add_handler(CommandHandler("links", lore))
     application.add_handler(CommandHandler("feedback", feedback))
+   
+application.add_handler(CommandHandler("send_anketa", send_anketa))
     application.add_handler(CommandHandler("addanketnik", add_anketnik))  # ← добавлена строка
     
     # Обработчик текста для анкет
