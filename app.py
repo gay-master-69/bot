@@ -707,17 +707,16 @@ def is_anketnik(user_id: int) -> bool:
     finally:
         session.close()
 
-def main():
-    """Основная функция запуска бота"""
-    import os
-    if os.path.exists("omniverse_rp.db"):
-        os.remove("omniverse_rp.db")
-        print("🗑️ Старая база удалена")
-    
-    def create_tables():
-    Base.metadata.drop_all(bind=engine)  # ← удаляет ВСЕ таблицы
+def create_tables():
+    """Создание таблиц в базе данных"""
     Base.metadata.create_all(bind=engine)
-    logger.info("Таблицы пересозданы")
+    logger.info("Таблицы базы данных созданы или уже существуют.")
+
+def main():
+    
+    
+    create_tables():
+    
     
     application = Application.builder().token(TOKEN).build()
     
