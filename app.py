@@ -709,8 +709,12 @@ def is_anketnik(user_id: int) -> bool:
 
 def main():
     """Основная функция запуска бота"""
-    create_tables()
+    import os
+    if os.path.exists("omniverse_rp.db"):
+        os.remove("omniverse_rp.db")
+        print("🗑️ Старая база удалена")
     
+    create_tables()
     
     application = Application.builder().token(TOKEN).build()
     
