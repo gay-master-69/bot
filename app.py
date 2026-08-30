@@ -166,7 +166,7 @@ class Post(Base):
 
 class AnketaRequest(Base):
     __tablename__ = "anketa_requests"
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.id"))
     anketa_content = Column(Text)
     status = Column(String, default="pending")
