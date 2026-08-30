@@ -660,19 +660,23 @@ async def add_anketnik(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if not context.args:
-        await update.message.reply_text("⚠️ Использование: /addanketnik @username")
+        await update.message.reply_text("⚠️ Использование: /addanketnik ID_пользователя")
         return
     
-    username = context.args[0].replace("@", "")
     session = SessionLocal()
     try:
-        target = session.query(User).filter_by(username=username).first()
+        target_id = int(context.args[0])
+        target = session.query(User).filter_by(id=target_id).first()
+        
         if not target:
-            await update.message.reply_text("❌ Пользователь не найден.")
+            await update.message.reply_text("❌ Пользователь не найден в базе. Попросите его написать /start боту.")
             return
+        
         target.is_anketnik = True
         session.commit()
-        await update.message.reply_text(f"✅ {username} назначен анкетником.")
+        await update.message.reply_text(f"✅ Пользователь @{target.username or target.id} назначен анкетником.")
+    except ValueError:
+        await update.message.reply_text("⚠️ Введите ID пользователя (число).")
     finally:
         session.close()
 
