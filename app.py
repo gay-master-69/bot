@@ -715,7 +715,8 @@ def create_tables():
 def main():
     
     
-    create_tables():
+    create_tables()
+
     
     
     application = Application.builder().token(TOKEN).build()
