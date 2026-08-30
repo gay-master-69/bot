@@ -600,19 +600,17 @@ async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                f"📋 *Анкета #{anketa.id}*\n\n"
-                f"👤 Пользователь: @{user_info.username or user_info.id}\n"
-                f"🆔 ID: `{anketa.user_id}`\n\n"
-                f"📝 Текст:\n{anketa.anketa_content}",
-                parse_mode='Markdown',
-                reply_markup=reply_markup
-            )
+    f"📋 *Анкета*\n\n"
+    f"👤 Пользователь: @{user_info.username or user_info.id}\n"
+    f"🆔 ID: `{anketa.user_id}`\n\n"
+    f"📝 Текст:\n{anketa.anketa_content}",
+    parse_mode='Markdown',
+    reply_markup=reply_markup
+)
     finally:
         session.close()
 
-
 async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка кнопок одобрения/отклонения анкет"""
     query = update.callback_query
     await query.answer()
     
@@ -624,7 +622,7 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     parts = data.split('_')
     action = parts[1]
-    anketa_id = int(parts[2])
+    anketa_id = parts[2]  # ← теперь строка, а не int
     
     session = SessionLocal()
     try:
@@ -635,21 +633,17 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if action == "approve":
             anketa.status = "approved"
-            await query.edit_message_text(f"✅ Анкета #{anketa_id} одобрена.")
-            
+            await query.edit_message_text(f"✅ Анкета одобрена.")
             await context.bot.send_message(
                 chat_id=anketa.user_id,
-                text=f"✅ Ваша анкета была одобрена!\n\n"
-                     f"Теперь вы можете участвовать в игре. Удачи!"
+                text="✅ Ваша анкета была одобрена!"
             )
         else:
             anketa.status = "rejected"
-            await query.edit_message_text(f"❌ Анкета #{anketa_id} отклонена.")
-            
+            await query.edit_message_text(f"❌ Анкета отклонена.")
             await context.bot.send_message(
                 chat_id=anketa.user_id,
-                text=f"❌ Ваша анкета была отклонена.\n\n"
-                     f"Причина: не указана. Обратитесь к администрации."
+                text="❌ Ваша анкета была отклонена."
             )
         
         session.commit()
