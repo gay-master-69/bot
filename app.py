@@ -684,7 +684,8 @@ def main():
     
     # Добавляем обработчики команд
     application.add_handler(CommandHandler("start", start))
-   application.add_handler(CommandHandler("addanketnik", add_anketnik)) application.add_handler(CommandHandler("help", help_command))
+   application.add_handler(CommandHandler("addanketnik", add_anketnik))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
