@@ -653,6 +653,29 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         session.close()
 
+async def add_anketnik(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    if user.id not in DEVELOPER_IDS:
+        await update.message.reply_text("⛔ Только для разработчиков.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("⚠️ Использование: /addanketnik @username")
+        return
+    
+    username = context.args[0].replace("@", "")
+    session = SessionLocal()
+    try:
+        target = session.query(User).filter_by(username=username).first()
+        if not target:
+            await update.message.reply_text("❌ Пользователь не найден.")
+            return
+        target.is_anketnik = True
+        session.commit()
+        await update.message.reply_text(f"✅ {username} назначен анкетником.")
+    finally:
+        session.close()
+
 def main():
     """Основная функция запуска бота"""
     create_tables()
@@ -661,7 +684,7 @@ def main():
     
     # Добавляем обработчики команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
+   application.add_handler(CommandHandler("addanketnik", add_anketnik)) application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
