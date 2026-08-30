@@ -166,7 +166,7 @@ class Post(Base):
 
 class AnketaRequest(Base):
     __tablename__ = "anketa_requests"
-    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))  # ← UUID вместо Integer
     user_id = Column(BigInteger, ForeignKey("users.id"))
     anketa_content = Column(Text)
     status = Column(String, default="pending")
@@ -174,6 +174,7 @@ class AnketaRequest(Base):
     admin_message_id = Column(BigInteger, nullable=True)
     admin_chat_id = Column(BigInteger, nullable=True)
 
+    user = relationship("User", back_populates="anketa_requests")
     user = relationship("User", back_populates="anketa_requests")
 
 class InfoSubscription(Base):
