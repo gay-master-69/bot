@@ -481,7 +481,7 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
 
 # ========== АНКЕТЫ ==========
-MODERATOR_ID = 3999320548  # ← ТВОЙ ID
+MODERATOR_ID = 1720557031  # ← ТВОЙ ID
 
 async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Создание новой анкеты"""
@@ -532,9 +532,9 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     
     text = update.message.text
-    if len(text) < 10:
+    if len(text) < 5:
         await update.message.reply_text(
-            "⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов."
+            "⚠️ Анкета слишком короткая. Напишите хотя бы 5 символов."
         )
         return
     
@@ -636,7 +636,6 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=anketa.user_id,
                 text=f"✅ Ваша анкета была одобрена!\n\n"
-                     f"Теперь вы можете участвовать в игре. Удачи!"
             )
         else:
             anketa.status = "rejected"
