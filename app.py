@@ -523,7 +523,6 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка текста анкеты — отправляем сразу"""
     user = update.effective_user
     if not user:
         return
@@ -536,9 +535,10 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов.")
         return
     
+    logger.info(f"📝 Получен текст анкеты от {user.id}: {text[:50]}...")
+    
     session = SessionLocal()
     try:
-        # Сохраняем в БД
         new_anketa = AnketaRequest(
             user_id=user.id,
             anketa_content=text,
@@ -546,25 +546,29 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         session.add(new_anketa)
         session.commit()
+        logger.info(f"✅ Анкета сохранена в БД, id={new_anketa.id}")
         
-        # Отправляем модераторам
         for mod_id in MODERATOR_IDS:
-            await context.bot.send_message(
-                chat_id=mod_id,
-                text=f"📋 *Новая анкета!*\n\n"
-                     f"👤 От: @{user.username or user.first_name}\n"
-                     f"🆔 ID: `{user.id}`\n\n"
-                     f"📝 Текст анкеты:\n{text}",
-                parse_mode='Markdown'
-            )
+            try:
+                await context.bot.send_message(
+                    chat_id=mod_id,
+                    text=f"📋 *Новая анкета!*\n\n"
+                         f"👤 От: @{user.username or user.first_name}\n"
+                         f"🆔 ID: `{user.id}`\n\n"
+                         f"📝 Текст анкеты:\n{text}",
+                    parse_mode='Markdown'
+                )
+                logger.info(f"✅ Отправлено модератору {mod_id}")
+            except Exception as e:
+                logger.error(f"❌ Ошибка отправки модератору {mod_id}: {e}")
         
-        await update.message.reply_text(
-            "✅ Анкета отправлена на модерацию! Ожидайте ответа."
-        )
+        await update.message.reply_text("✅ Анкета отправлена на модерацию!")
         context.user_data.pop('anketa_step', None)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в anketa_handle_text: {e}")
+        await update.message.reply_text("❌ Ошибка при сохранении анкеты.")
     finally:
         session.close()
-
 
 async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Просмотр анкет на модерации (для анкетников)"""
