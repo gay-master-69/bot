@@ -710,6 +710,58 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         session.close()
 
+async def add_anketnik(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Назначить пользователя анкетником (только для разработчиков)"""
+    user = update.effective_user
+    if not user:
+        return
+    
+    if user.id not in DEVELOPER_IDS:
+        await update.message.reply_text("⛔ Только для разработчиков.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ Использование: /addanketnik @username\n"
+            "или: /addanketnik ID"
+        )
+        return
+    
+    session = SessionLocal()
+    try:
+        arg = context.args[0].replace("@", "")
+        target = None
+        
+        if arg.isdigit():
+            target = session.query(User).filter_by(id=int(arg)).first()
+        else:
+            target = session.query(User).filter_by(username=arg).first()
+        
+        if not target:
+            await update.message.reply_text(
+                "❌ Пользователь не найден. Попросите его написать /start боту."
+            )
+            return
+        
+        target.is_anketnik = True
+        session.commit()
+        await update.message.reply_text(
+            f"✅ Пользователь @{target.username or target.id} назначен анкетником!"
+        )
+    finally:
+        session.close()
+
+def is_anketnik(user_id: int) -> bool:
+    """Проверка, является ли пользователь анкетником"""
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter_by(id=user_id).first()
+        if user and user.is_anketnik:
+            return True
+        return False
+    finally:
+        session.close()
+
 def main():
     """Основная функция запуска бота"""
     
