@@ -714,7 +714,10 @@ def main():
         os.remove("omniverse_rp.db")
         print("🗑️ Старая база удалена")
     
-    create_tables()
+    def create_tables():
+    Base.metadata.drop_all(bind=engine)  # ← удаляет ВСЕ таблицы
+    Base.metadata.create_all(bind=engine)
+    logger.info("Таблицы пересозданы")
     
     application = Application.builder().token(TOKEN).build()
     
