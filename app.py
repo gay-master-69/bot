@@ -122,7 +122,7 @@ class User(Base):
 
 class Role(Base):
     __tablename__ = "roles"
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     user_id = Column(BigInteger, ForeignKey("users.id"))
     name = Column(String)
     hashtag = Column(String, index=True)
