@@ -550,7 +550,7 @@ async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         # Отправляем ТЕБЕ в личку
         for mod_id in MODERATOR_IDS:
-         await context.bot.send_message(
+            await context.bot.send_message(
         chat_id=mod_id,
         text=f"📋 *Новая анкета!*\n\n"
                  f"👤 От: @{user.username or user.first_name}\n"
