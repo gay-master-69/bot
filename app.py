@@ -356,57 +356,7 @@ async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # TODO: Реализовать логику просмотра анкет
     await update.message.reply_text("📋 Список анкет на модерацию пока пуст.")
 
-async def warn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Выдать предупреждение пользователю (только для администраторов)"""
-    user = update.effective_user
-    if not user:
-        return
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("⛔ У вас нет прав для выполнения этой команды.")
-        return
-    
-    # Проверяем, передан ли аргумент
-    if not context.args:
-        await update.message.reply_text(
-            "⚠️ Использование: /warn @username [причина]\n"
-            "Пример: /warn @user Нарушение правил"
-        )
-        return
-    
-    # TODO: Реализовать логику выдачи предупреждений
-    target_username = context.args[0]
-    reason = " ".join(context.args[1:]) if len(context.args) > 1 else "Причина не указана"
-    
-    await update.message.reply_text(
-        f"⚠️ Пользователю {target_username} выдано предупреждение.\n"
-        f"Причина: {reason}"
-    )
 
-async def deletemessages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Удалить сообщения пользователя (только для администраторов)"""
-    user = update.effective_user
-    if not user:
-        return
-    
-    if not is_admin(user.id):
-        await update.message.reply_text("⛔ У вас нет прав для выполнения этой команды.")
-        return
-    
-    if not context.args:
-        await update.message.reply_text(
-            "⚠️ Использование: /deletemessages @username [количество]\n"
-            "Пример: /deletemessages @user 10"
-        )
-        return
-    
-    # TODO: Реализовать логику удаления сообщений
-    target_username = context.args[0]
-    count = int(context.args[1]) if len(context.args) > 1 else 5
-    
-    await update.message.reply_text(
-        f"🗑️ Удалено {count} последних сообщений пользователя {target_username}."
-    )
 
 async def rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /rules"""
@@ -422,7 +372,6 @@ async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "❌ Неизвестная команда. Используйте /help для списка доступных команд."
     )
-
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("Операция отменена.")
@@ -722,8 +671,6 @@ def main():
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
-    application.add_handler(CommandHandler("warn", warn))
-    application.add_handler(CommandHandler("deletemessages", deletemessages))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
     application.add_handler(CommandHandler("lore", lore))
