@@ -765,7 +765,7 @@ def main():
     application.add_handler(CommandHandler("anketa_review", anketa_review))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(CommandHandler("links", links))
+    application.add_handler(CommandHandler("lore", lore))
     application.add_handler(CommandHandler("feedback", feedback))
     application.add_handler(CommandHandler("addanketnik", add_anketnik))
     
