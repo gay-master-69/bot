@@ -771,7 +771,7 @@ def main():
     
     # Обработчик сбора анкеты (текст + медиа)
     application.add_handler(MessageHandler(
-        (filters.TEXT | filters.PHOTO | filters.VIDEO | filters.Document | filters.ANIMATION) & ~filters.COMMAND,
+        (filters.TEXT | filters.PHOTO | filters.VIDEO | filters.ANIMATION) & ~filters.COMMAND,
         anketa_collect
     ))
     
