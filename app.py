@@ -5,6 +5,7 @@ import re
 import datetime
 import uuid
 from typing import Optional, List
+from telegram import InputMediaPhoto, InputMediaVideo, InputMediaDocument
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -522,7 +523,7 @@ async def anketa_collect(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Отправка собранной анкеты на модерацию (через пересылку)"""
+    """Отправка собранной анкеты на модерацию (с медиагруппой)"""
     user = update.effective_user
     if not user:
         return
@@ -534,6 +535,101 @@ async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Напишите /anketa и добавьте хотя бы один блок."
         )
         return
+    
+    session = SessionLocal()
+    try:
+        # Формируем текст для БД
+        full_text = ""
+        for item in items:
+            if item["type"] == "text":
+                full_text += f"{item['text']}\n\n"
+            else:
+                full_text += f"[{item['type'].upper()}] file_id: {item['file_id']}\n\n"
+        
+        # Сохраняем в БД
+        new_anketa = AnketaRequest(
+            user_id=user.id,
+            anketa_content=full_text,
+            status="pending"
+        )
+        session.add(new_anketa)
+        session.commit()
+        
+        # Отправляем модераторам
+        for mod_id in MODERATOR_IDS:
+            try:
+                # Заголовок
+                await context.bot.send_message(
+                    chat_id=mod_id,
+                    text=f"📋 *Новая анкета!*\n\n"
+                         f"👤 От: @{user.username or user.first_name}\n"
+                         f"🆔 ID: `{user.id}`\n\n"
+                         f"📎 Всего частей: {len(items)}",
+                    parse_mode='Markdown'
+                )
+                
+                # Собираем медиа в группу (максимум 10)
+                media_group = []
+                text_parts = []
+                
+                for item in items:
+                    if item["type"] == "text":
+                        text_parts.append(item["text"])
+                    elif item["type"] in ["photo", "video", "animation", "document"]:
+                        if len(media_group) < 10:
+                            from telegram import InputMediaPhoto, InputMediaVideo, InputMediaDocument
+                            
+                            if item["type"] == "photo":
+                                media_group.append(InputMediaPhoto(media=item["file_id"]))
+                            elif item["type"] == "video":
+                                media_group.append(InputMediaVideo(media=item["file_id"]))
+                            elif item["type"] == "animation":
+                                media_group.append(InputMediaVideo(media=item["file_id"]))  # GIF как видео
+                            elif item["type"] == "document":
+                                media_group.append(InputMediaDocument(media=item["file_id"]))
+                
+                # Отправляем медиагруппу (если есть)
+                if media_group:
+                    await context.bot.send_media_group(
+                        chat_id=mod_id,
+                        media=media_group
+                    )
+                
+                # Отправляем текстовые части (если есть)
+                if text_parts:
+                    await context.bot.send_message(
+                        chat_id=mod_id,
+                        text="📝 *Текст анкеты:*\n\n" + "\n\n---\n\n".join(text_parts),
+                        parse_mode='Markdown'
+                    )
+                
+                # Кнопки в конце
+                keyboard = [
+                    [
+                        InlineKeyboardButton("✅ Одобрить", callback_data=f"anketa_approve_{new_anketa.id}"),
+                        InlineKeyboardButton("❌ Отклонить", callback_data=f"anketa_reject_{new_anketa.id}"),
+                    ]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await context.bot.send_message(
+                    chat_id=mod_id,
+                    text="📌 *Действия с анкетой:*",
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup
+                )
+                
+            except Exception as e:
+                logger.error(f"Ошибка отправки модератору {mod_id}: {e}")
+        
+        await update.message.reply_text("✅ Анкета отправлена на модерацию!")
+        context.user_data.pop('anketa_step', None)
+        context.user_data.pop('anketa_items', None)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения анкеты: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {e}")
+    finally:
+        session.close()
     
     session = SessionLocal()
     try:
