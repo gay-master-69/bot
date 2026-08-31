@@ -431,10 +431,10 @@ async def feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session.close()
 
 # ========== АНКЕТЫ ==========
-MODERATOR_IDS = [1720557031, 5150559970]  # ← оба твоих ID
+MODERATOR_IDS = [1720557031, 5150559970]
 
 async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Создание новой анкеты"""
+    """Начало создания анкеты"""
     user = update.effective_user
     if not user:
         return
@@ -446,7 +446,6 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⛔ Вы забанены.")
             return
         
-        # Проверяем, есть ли уже анкета на рассмотрении
         existing = session.query(AnketaRequest).filter_by(
             user_id=user.id, 
             status="pending"
@@ -459,66 +458,160 @@ async def anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Запрашиваем текст анкеты
-        context.user_data['anketa_step'] = 'waiting_content'
+        # Включаем режим сбора
+        context.user_data['anketa_step'] = 'collecting'
+        context.user_data['anketa_items'] = []  # список собранных сообщений (текст + file_id)
+        
         await update.message.reply_text(
             "📝 *Создание анкеты*\n\n"
-            "Напишите текст вашей анкеты.\n"
-            "Укажите: имя, возраст, описание роли и другую важную информацию.\n\n"
-            "Просто отправьте текст анкеты прямо сейчас:",
+            "Отправляйте части анкеты по очереди.\n"
+            "Можно отправлять текст, фото, видео, GIF, документы.\n\n"
+            "Когда закончите, напишите:\n"
+            "`/send_anketa` — для отправки на модерацию\n"
+            "`/cancel` — для отмены\n\n"
+            "*Отправьте первый блок анкеты:*",
             parse_mode='Markdown'
         )
     finally:
         session.close()
 
 
-async def anketa_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def anketa_collect(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Сбор частей анкеты"""
     user = update.effective_user
     if not user:
         return
     
-    if context.user_data.get('anketa_step') != 'waiting_content':
+    if context.user_data.get('anketa_step') != 'collecting':
         return
     
-    text = update.message.text
-    if len(text) < 10:
-        await update.message.reply_text("⚠️ Анкета слишком короткая. Напишите хотя бы 10 символов.")
+    # Определяем тип и содержимое
+    item = {
+        "text": update.message.text or update.message.caption or "",
+        "type": "text",
+        "file_id": None,
+        "sender": user.id
+    }
+    
+    if update.message.photo:
+        item["type"] = "photo"
+        item["file_id"] = update.message.photo[-1].file_id
+    elif update.message.video:
+        item["type"] = "video"
+        item["file_id"] = update.message.video.file_id
+    elif update.message.document:
+        item["type"] = "document"
+        item["file_id"] = update.message.document.file_id
+    elif update.message.animation:
+        item["type"] = "animation"
+        item["file_id"] = update.message.animation.file_id
+    elif update.message.text and not update.message.text.startswith('/'):
+        item["type"] = "text"
+        item["file_id"] = None
+    else:
+        return  # команды и прочее игнорируем
+    
+    # Сохраняем в список
+    if item["type"] != "text" or item["text"].strip():
+        context.user_data['anketa_items'].append(item)
+        total = len(context.user_data['anketa_items'])
+        await update.message.reply_text(
+            f"✅ Часть анкеты сохранена ({total} шт.)\n\n"
+            f"Продолжайте отправлять части анкеты.\n"
+            f"Для отправки напишите /send_anketa"
+        )
+    else:
+        await update.message.reply_text("⚠️ Пустое сообщение. Отправьте что-то содержательное.")
+
+
+async def send_anketa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отправка собранной анкеты на модерацию"""
+    user = update.effective_user
+    if not user:
         return
     
-    logger.info(f"📝 Получен текст анкеты от {user.id}: {text[:50]}...")
+    items = context.user_data.get('anketa_items', [])
+    if not items:
+        await update.message.reply_text(
+            "⚠️ Анкета пуста!\n"
+            "Напишите /anketa и добавьте хотя бы один блок."
+        )
+        return
     
     session = SessionLocal()
     try:
+        # Формируем текст для БД и для отправки
+        full_text = ""
+        media_count = 0
+        
+        for item in items:
+            if item["type"] == "text":
+                full_text += f"{item['text']}\n\n"
+            else:
+                full_text += f"[{item['type'].upper()}] file_id: {item['file_id']}\n\n"
+                media_count += 1
+        
+        # Сохраняем в БД
         new_anketa = AnketaRequest(
             user_id=user.id,
-            anketa_content=text,
+            anketa_content=full_text,
             status="pending"
         )
         session.add(new_anketa)
         session.commit()
-        logger.info(f"✅ Анкета сохранена в БД, id={new_anketa.id}")
         
+        # Отправляем модераторам
         for mod_id in MODERATOR_IDS:
             try:
+                # Отправляем текст
                 await context.bot.send_message(
                     chat_id=mod_id,
                     text=f"📋 *Новая анкета!*\n\n"
                          f"👤 От: @{user.username or user.first_name}\n"
                          f"🆔 ID: `{user.id}`\n\n"
-                         f"📝 Текст анкеты:\n{text}",
+                         f"📝 Содержит {len(items)} блок(ов), {media_count} медиа-файлов.\n\n"
+                         f"📄 Текст:\n{full_text[:500]}...",
                     parse_mode='Markdown'
                 )
-                logger.info(f"✅ Отправлено модератору {mod_id}")
+                
+                # Отправляем медиа (если есть)
+                for item in items:
+                    if item["type"] == "photo":
+                        await context.bot.send_photo(
+                            chat_id=mod_id,
+                            photo=item["file_id"],
+                            caption=f"📎 Часть анкеты (фото)"
+                        )
+                    elif item["type"] == "video":
+                        await context.bot.send_video(
+                            chat_id=mod_id,
+                            video=item["file_id"],
+                            caption=f"📎 Часть анкеты (видео)"
+                        )
+                    elif item["type"] == "document":
+                        await context.bot.send_document(
+                            chat_id=mod_id,
+                            document=item["file_id"],
+                            caption=f"📎 Часть анкеты (документ)"
+                        )
+                    elif item["type"] == "animation":
+                        await context.bot.send_animation(
+                            chat_id=mod_id,
+                            animation=item["file_id"],
+                            caption=f"📎 Часть анкеты (GIF)"
+                        )
             except Exception as e:
-                logger.error(f"❌ Ошибка отправки модератору {mod_id}: {e}")
+                logger.error(f"Ошибка отправки модератору {mod_id}: {e}")
         
         await update.message.reply_text("✅ Анкета отправлена на модерацию!")
         context.user_data.pop('anketa_step', None)
+        context.user_data.pop('anketa_items', None)
     except Exception as e:
-        logger.error(f"❌ Ошибка в anketa_handle_text: {e}")
-        await update.message.reply_text("❌ Ошибка при сохранении анкеты.")
+        logger.error(f"Ошибка сохранения анкеты: {e}")
+        await update.message.reply_text(f"❌ Ошибка: {e}")
     finally:
         session.close()
+
 
 async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Просмотр анкет на модерации (для анкетников)"""
@@ -549,17 +642,19 @@ async def anketa_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-    f"📋 *Анкета*\n\n"
-    f"👤 Пользователь: @{user_info.username or user_info.id}\n"
-    f"🆔 ID: `{anketa.user_id}`\n\n"
-    f"📝 Текст:\n{anketa.anketa_content}",
-    parse_mode='Markdown',
-    reply_markup=reply_markup
-)
+                f"📋 *Анкета*\n\n"
+                f"👤 Пользователь: @{user_info.username or user_info.id}\n"
+                f"🆔 ID: `{anketa.user_id}`\n\n"
+                f"📝 Текст:\n{anketa.anketa_content[:500]}...",
+                parse_mode='Markdown',
+                reply_markup=reply_markup
+            )
     finally:
         session.close()
 
+
 async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка кнопок одобрения/отклонения анкет"""
     query = update.callback_query
     await query.answer()
     
@@ -571,7 +666,7 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     parts = data.split('_')
     action = parts[1]
-    anketa_id = parts[2]  # ← теперь строка, а не int
+    anketa_id = parts[2]
     
     session = SessionLocal()
     try:
@@ -583,16 +678,20 @@ async def anketa_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if action == "approve":
             anketa.status = "approved"
             await query.edit_message_text(f"✅ Анкета одобрена.")
+            
             await context.bot.send_message(
                 chat_id=anketa.user_id,
-                text="✅ Ваша анкета была одобрена!"
+                text=f"✅ Ваша анкета была одобрена!\n\n"
+                     f"Теперь вы можете участвовать в игре. Удачи!"
             )
         else:
             anketa.status = "rejected"
             await query.edit_message_text(f"❌ Анкета отклонена.")
+            
             await context.bot.send_message(
                 chat_id=anketa.user_id,
-                text="❌ Ваша анкета была отклонена."
+                text=f"❌ Ваша анкета была отклонена.\n\n"
+                     f"Причина не указана. Обратитесь к администрации."
             )
         
         session.commit()
@@ -651,17 +750,9 @@ def is_anketnik(user_id: int) -> bool:
     finally:
         session.close()
 
-def create_tables():
-    """Создание таблиц в базе данных"""
-    Base.metadata.create_all(bind=engine)
-    logger.info("Таблицы базы данных созданы или уже существуют.")
-
 def main():
-    
-    
+    """Основная функция запуска бота"""
     create_tables()
-
-    
     
     application = Application.builder().token(TOKEN).build()
     
@@ -670,15 +761,19 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("anketa", anketa))
+    application.add_handler(CommandHandler("send_anketa", send_anketa))
     application.add_handler(CommandHandler("anketa_review", anketa_review))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CommandHandler("rules", rules))
-    application.add_handler(CommandHandler("lore", lore))
+    application.add_handler(CommandHandler("links", links))
     application.add_handler(CommandHandler("feedback", feedback))
     application.add_handler(CommandHandler("addanketnik", add_anketnik))
     
-    # Обработчик текста для анкет
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anketa_handle_text))
+    # Обработчик сбора анкеты (текст + медиа)
+    application.add_handler(MessageHandler(
+        (filters.TEXT | filters.PHOTO | filters.VIDEO | filters.DOCUMENT | filters.ANIMATION) & ~filters.COMMAND,
+        anketa_collect
+    ))
     
     # Обработчик Callback (кнопки)
     application.add_handler(CallbackQueryHandler(anketa_callback, pattern="^anketa_"))
